@@ -108,6 +108,8 @@ StatusCode Pandora::PrepareEvent()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
+void DumpPandoraAlgorithmTiming();   // defined in PandoraContentApiImpl.cc (PANDORA_ALG_TIMING profiler)
+
 StatusCode Pandora::ProcessEvent()
 {
     PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, this->PrepareEvent());
@@ -117,6 +119,8 @@ StatusCode Pandora::ProcessEvent()
 
     for (const std::string &algorithmName : pandoraAlgorithms)
         PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, m_pPandoraImpl->RunAlgorithm(algorithmName));
+
+    DumpPandoraAlgorithmTiming();
 
     return STATUS_CODE_SUCCESS;
 }

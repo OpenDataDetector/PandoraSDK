@@ -32,8 +32,40 @@
 
 #include "Persistency/PandoraIO.h"
 
+#include <chrono>
+#include <iomanip>
+#include <map>
+#include <vector>
+#include <algorithm>
+
 namespace pandora
 {
+
+// --- per-algorithm self-time profiler (enable with env PANDORA_ALG_TIMING) -----------------------
+namespace
+{
+    std::map<std::string, double> g_algSelfTime;   // exclusive (self) seconds by algorithm type
+    std::map<std::string, unsigned long> g_algCalls;
+    std::vector<double> g_algChildStack;           // accumulated child time for each active frame
+    bool AlgTimingEnabled() { static const bool e = (nullptr != getenv("PANDORA_ALG_TIMING")); return e; }
+}
+
+void DumpPandoraAlgorithmTiming()
+{
+    if (!AlgTimingEnabled() || g_algSelfTime.empty())
+        return;
+    std::vector<std::pair<double, std::string>> rows;
+    double total = 0.;
+    for (const auto &kv : g_algSelfTime) { rows.emplace_back(kv.second, kv.first); total += kv.second; }
+    std::sort(rows.rbegin(), rows.rend());
+    std::cout << "==== PANDORA ALGORITHM SELF-TIME (this event) : total=" << total << " s ====" << std::endl;
+    for (const auto &r : rows)
+        std::cout << "[ALGTIME] " << std::setw(9) << std::fixed << std::setprecision(3) << r.first << " s  "
+                  << std::setw(6) << std::setprecision(1) << (100. * r.first / total) << "%  calls="
+                  << g_algCalls[r.second] << "  " << r.second << std::endl;
+    std::cout << "==== END PANDORA ALGORITHM SELF-TIME ====" << std::endl;
+    g_algSelfTime.clear(); g_algCalls.clear(); g_algChildStack.clear();
+}
 
 // Macros for type mappings to avoid repeated template specializations
 #define MANAGER_TYPE_LIST(d)                                                \
@@ -222,6 +254,10 @@ StatusCode PandoraContentApiImpl::RunAlgorithm(const std::string &algorithmName)
 
     PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, this->PreRunAlgorithm(iter->second));
 
+    const bool algTiming(AlgTimingEnabled());
+    std::chrono::steady_clock::time_point algT0;
+    if (algTiming) { g_algChildStack.push_back(0.); algT0 = std::chrono::steady_clock::now(); }
+
     try
     {
         const bool shouldDisplayAlgorithmInfo(m_pPandora->GetSettings()->ShouldDisplayAlgorithmInfo());
@@ -248,6 +284,17 @@ StatusCode PandoraContentApiImpl::RunAlgorithm(const std::string &algorithmName)
     catch (...)
     {
         std::cout << "Failure in algorithm " << iter->first << ", " << iter->second->GetType() << ", unknown exception" << std::endl;
+    }
+
+    if (algTiming)
+    {
+        const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - algT0).count();
+        const double childTime = g_algChildStack.back();
+        g_algChildStack.pop_back();
+        g_algSelfTime[iter->second->GetType()] += (elapsed - childTime);
+        g_algCalls[iter->second->GetType()] += 1;
+        if (!g_algChildStack.empty())
+            g_algChildStack.back() += elapsed;
     }
 
     PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, this->PostRunAlgorithm(iter->second));

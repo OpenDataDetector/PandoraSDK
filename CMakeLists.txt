@@ -17,14 +17,14 @@ set(${PROJECT_NAME}_VERSION "${${PROJECT_NAME}_VERSION_MAJOR}.${${PROJECT_NAME}_
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 # Dependencies
-include(PandoraCMakeSettings)
+# include(PandoraCMakeSettings)  # external packaging macros; bypassed - we only need the .so
 
 # Prefer local include directory to any paths to installed header files
 include_directories(include)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 # Low level settings - compiler etc
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -pedantic -Wno-long-long -Wno-sign-compare -Wshadow -fno-strict-aliasing -std=c++17 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-O2 -g -Wall -Wextra -pedantic -Wno-long-long -Wno-sign-compare -fno-strict-aliasing -std=c++17 ${CMAKE_CXX_FLAGS}")
 
 include(CheckCXXCompilerFlag)
 unset(COMPILER_SUPPORTS_CXX_FLAGS CACHE)
@@ -42,7 +42,7 @@ file(GLOB_RECURSE PANDORA_SDK_SRCS RELATIVE ${PROJECT_SOURCE_DIR} "src/*.cc")
 
 # - Add library and properties
 add_library(${PROJECT_NAME} SHARED ${PANDORA_SDK_SRCS})
-set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
+set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION} SOVERSION ${${PROJECT_NAME}_VERSION_MAJOR}.${${PROJECT_NAME}_VERSION_MINOR})
 
 # - Optional documents
 option(PandoraSDK_BUILD_DOCS "Build documentation for ${PROJECT_NAME}" OFF)
@@ -59,9 +59,6 @@ install(TARGETS ${PROJECT_NAME} DESTINATION lib COMPONENT Runtime)
 # - headers
 install(DIRECTORY include/ DESTINATION include COMPONENT Development FILES_MATCHING PATTERN "*.h")
 
-# - support files
-PANDORA_GENERATE_PACKAGE_CONFIGURATION_FILES(${PROJECT_NAME}Config.cmake ${PROJECT_NAME}ConfigVersion.cmake ${PROJECT_NAME}LibDeps.cmake)
-
-#-------------------------------------------------------------------------------------------------------------------------------------------
-# display some variables and write them to cache
-PANDORA_DISPLAY_STD_VARIABLES()
+# - support files (packaging macros bypassed)
+# PANDORA_GENERATE_PACKAGE_CONFIGURATION_FILES(...)
+# PANDORA_DISPLAY_STD_VARIABLES()
