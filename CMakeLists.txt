@@ -59,6 +59,15 @@ install(TARGETS ${PROJECT_NAME} DESTINATION lib COMPONENT Runtime)
 # - headers
 install(DIRECTORY include/ DESTINATION include COMPONENT Development FILES_MATCHING PATTERN "*.h")
 
-# - support files (packaging macros bypassed)
-# PANDORA_GENERATE_PACKAGE_CONFIGURATION_FILES(...)
-# PANDORA_DISPLAY_STD_VARIABLES()
+# - minimal hand-rolled package config so find_package(PandoraSDK) resolves THIS install
+# (the PandoraCMakeSettings packaging macros are bypassed; without a config file, consumers
+# fall through to the key4hep/cvmfs PandoraSDKConfig.cmake and silently link the stock SDK).
+file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake CONTENT "
+SET( PandoraSDK_ROOT \"${CMAKE_INSTALL_PREFIX}\" )
+SET( PandoraSDK_VERSION \"${${PROJECT_NAME}_VERSION}\" )
+SET( PandoraSDK_INCLUDE_DIRS \"${CMAKE_INSTALL_PREFIX}/include\" )
+SET( PandoraSDK_LIBRARY_DIRS \"${CMAKE_INSTALL_PREFIX}/lib\" )
+FIND_LIBRARY( PandoraSDK_LIBRARIES NAMES PandoraSDK PATHS \"${CMAKE_INSTALL_PREFIX}/lib\" NO_DEFAULT_PATH )
+SET( PandoraSDK_FOUND TRUE )
+")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake DESTINATION .)
